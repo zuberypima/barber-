@@ -1,21 +1,18 @@
 import 'package:barber/constants/constants.dart';
-import 'package:barber/services/authentication_services.dart';
 import 'package:barber/services/navigator.dart';
 import 'package:barber/view/barber_pages.dart/BarberRegistrationPage.dart';
-import 'package:barber/view/customer_pages/customer_details.dart';
 import 'package:barber/view/login_page.dart';
-import 'package:barber/widget/customeButton.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-class RegisterCustomer extends StatefulWidget {
-  const RegisterCustomer({super.key});
+class Registerbarberemail extends StatefulWidget {
+  const Registerbarberemail({super.key});
 
   @override
-  State<RegisterCustomer> createState() => _RegisterCustomerState();
+  State<Registerbarberemail> createState() => _RegisterbarberemailState();
 }
 
-class _RegisterCustomerState extends State<RegisterCustomer> {
+class _RegisterbarberemailState extends State<Registerbarberemail> {
   final _formKey = GlobalKey<FormState>();
   final _fullNameController = TextEditingController();
   final _emailController = TextEditingController();
@@ -38,13 +35,9 @@ class _RegisterCustomerState extends State<RegisterCustomer> {
 
     setState(() => _isLoading = true);
     try {
-      // await AuthenticationServices().createUserWithEmailAndPassword(
-      //   email: _emailController.text.trim(),
-      //   password: _passwordController.text.trim(),
-      // );
       push_next_page(
         context,
-        CustomerDetails(
+        BarberRegistrationPage(
           email: _emailController.text,
           password: _passwordController.text,
         ),
@@ -120,7 +113,7 @@ class _RegisterCustomerState extends State<RegisterCustomer> {
                         ),
                         SizedBox(height: 5),
                         Text(
-                          'Create your Customer Account',
+                          'Create your professional account',
                           style: GoogleFonts.poppins(
                             color: Colors.white70,
                             fontSize: 14,
@@ -143,7 +136,7 @@ class _RegisterCustomerState extends State<RegisterCustomer> {
                         child: Column(
                           children: [
                             Text(
-                              'Create New Customer Account',
+                              'Create New Barber Account',
                               style: GoogleFonts.poppins(
                                 fontSize: 18,
                                 fontWeight: FontWeight.bold,
@@ -170,14 +163,19 @@ class _RegisterCustomerState extends State<RegisterCustomer> {
                                     borderRadius: BorderRadius.circular(10),
                                   ),
                                 ),
-                                child: Text(
-                                  'REGISTER',
-                                  style: GoogleFonts.poppins(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 16,
-                                    color: Colors.white,
-                                  ),
-                                ),
+                                child:
+                                    _isLoading
+                                        ? CircularProgressIndicator(
+                                          color: Colors.white,
+                                        )
+                                        : Text(
+                                          'REGISTER',
+                                          style: GoogleFonts.poppins(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 16,
+                                            color: Colors.white,
+                                          ),
+                                        ),
                               ),
                             ),
                           ],

@@ -1,8 +1,6 @@
 import 'package:barber/constants/constants.dart';
 import 'package:barber/services/navigator.dart';
 import 'package:barber/view/UserTypeSelectionPage.dart';
-import 'package:barber/view/registerUser.dart';
-import 'package:barber/widget/customeButton.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 

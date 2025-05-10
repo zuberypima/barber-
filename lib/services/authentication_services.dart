@@ -46,4 +46,24 @@ class AuthenticationServices {
       "ProfileImage": "",
     });
   }
+
+  Future<void> createCustomerAccount(
+    String fullName,
+    phoneNumber,
+    emailAddres,
+  ) async {
+    await FirebaseFirestore.instance
+        .collection('customerDetails')
+        .doc(emailAddres.toString())
+        .set({
+          'email': emailAddres,
+          'fullName': fullName,
+          'phoneNumber': phoneNumber,
+          'profileImageUrl': 'profileUrl',
+          'isVerified': false,
+          'createdAt': FieldValue.serverTimestamp(),
+          'rating': 0,
+          'totalRatings': 0,
+        });
+  }
 }

@@ -1,3 +1,5 @@
+import 'package:barber/services/navigator.dart';
+import 'package:barber/view/customer_home.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -7,21 +9,21 @@ import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import 'package:geolocator/geolocator.dart'; // Import geolocator plugin
 
-class BarberRegistrationPage extends StatefulWidget {
+class CustomerDetails extends StatefulWidget {
   final String email;
   final String password;
 
-  const BarberRegistrationPage({
+  const CustomerDetails({
     super.key,
     required this.email,
     required this.password,
   });
 
   @override
-  State<BarberRegistrationPage> createState() => _BarberRegistrationPageState();
+  State<CustomerDetails> createState() => _CustomerDetailsState();
 }
 
-class _BarberRegistrationPageState extends State<BarberRegistrationPage> {
+class _CustomerDetailsState extends State<CustomerDetails> {
   final _formKey = GlobalKey<FormState>();
   final _auth = FirebaseAuth.instance;
   final _firestore = FirebaseFirestore.instance;
@@ -30,13 +32,7 @@ class _BarberRegistrationPageState extends State<BarberRegistrationPage> {
   // Form fields
   String _fullName = '';
   String _phoneNumber = '';
-  String _shopName = '';
-  String _shopAddress = '';
-  double? _latitude; // To store latitude
-  double? _longitude; // To store longitude
-  String _specialties = '';
   File? _profileImage;
-  File? _shopLicenseImage;
   bool _isLoading = false;
   bool _obscurePassword = true;
 
@@ -48,86 +44,16 @@ class _BarberRegistrationPageState extends State<BarberRegistrationPage> {
       setState(() {
         if (isProfile) {
           _profileImage = File(pickedFile.path);
-        } else {
-          _shopLicenseImage = File(pickedFile.path);
         }
       });
     }
   }
 
-  Future<void> _getCurrentLocation() async {
-    setState(() => _isLoading = true);
-    bool serviceEnabled;
-    LocationPermission permission;
-
-    // Test if location services are enabled.
-    serviceEnabled = await Geolocator.isLocationServiceEnabled();
-    if (!serviceEnabled) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Location services are disabled.')),
-      );
-      setState(() => _isLoading = false);
-      return;
-    }
-
-    permission = await Geolocator.checkPermission();
-    if (permission == LocationPermission.denied) {
-      permission = await Geolocator.requestPermission();
-      if (permission == LocationPermission.denied) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Location permissions are denied')),
-        );
-        setState(() => _isLoading = false);
-        return;
-      }
-    }
-
-    if (permission == LocationPermission.deniedForever) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Location permissions are permanently denied, we cannot request permissions.',
-          ),
-        ),
-      );
-      setState(() => _isLoading = false);
-      return;
-    }
-
-    try {
-      Position position = await Geolocator.getCurrentPosition();
-      setState(() {
-        _latitude = position.latitude;
-        _longitude = position.longitude;
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Location picked successfully!')),
-      );
-    } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Error getting location: $e')));
-    } finally {
-      setState(() => _isLoading = false);
-    }
-  }
-
   Future<void> _registerBarber() async {
     if (!_formKey.currentState!.validate()) return;
-    if (_profileImage == null || _shopLicenseImage == null) {
+    if (_profileImage == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please upload both profile image and license'),
-        ),
-      );
-      return;
-    }
-
-    if (_latitude == null || _longitude == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please pick your shop location on the map'),
-        ),
+        const SnackBar(content: Text('Please upload  profile image')),
       );
       return;
     }
@@ -146,44 +72,33 @@ class _BarberRegistrationPageState extends State<BarberRegistrationPage> {
         _profileImage!,
         'profile_${widget.email.toString()}',
       );
-      final licenseUrl = await _uploadImage(
-        _shopLicenseImage!,
-        'license_${widget.email.toString()}',
-      );
 
       // 3. Create barber document in Firestore
       await _firestore
-          .collection('BarbersDetails')
+          .collection('CustomersDetails')
           .doc(widget.email.toString())
           .set({
             'email': widget.email,
             'fullName': _fullName,
             'phoneNumber': _phoneNumber,
-            'shopName': _shopName,
-            'shopAddress': _shopAddress,
-            'latitude': _latitude, // Save latitude
-            'longitude': _longitude, // Save longitude
-            'specialties': _specialties,
             'profileImageUrl': profileUrl,
-            'licenseImageUrl': licenseUrl,
             'isVerified': false,
             'createdAt': FieldValue.serverTimestamp(),
             'rating': 0,
             'totalRatings': 0,
-            'services': [],
-            'workingHours': {
-              'Monday': {'open': '09:00', 'close': '18:00'},
-              'Tuesday': {'open': '09:00', 'close': '18:00'},
-              'Wednesday': {'open': '09:00', 'close': '18:00'},
-              'Thursday': {'open': '09:00', 'close': '18:00'},
-              'Friday': {'open': '09:00', 'close': '18:00'},
-              'Saturday': {'open': '10:00', 'close': '16:00'},
-              'Sunday': {'open': '10:00', 'close': '14:00'},
-            },
           });
 
       // 4. Navigate to dashboard or verification pending screen
-      // Navigator.pushReplacementNamed(context, '/barber-dashboard');
+      // push_next_page(context, CustomerHomePage());
+      // Navigator.pushReplacement(
+      //   context,
+      //   MaterialPageRoute(builder: (context) => CustomerHomePage()),
+      // );
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (context) => const CustomerHomePage()),
+        (Route<dynamic> route) =>
+            false, // This predicate always returns false, removing all previous routes
+      );
     } on FirebaseAuthException catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(e.message ?? 'Registration failed')),
@@ -288,102 +203,6 @@ class _BarberRegistrationPageState extends State<BarberRegistrationPage> {
                     keyboardType: TextInputType.phone,
                     validator: _validatePhone,
                   ),
-                  const SizedBox(height: 20),
-                  _buildFormField(
-                    'Shop Name',
-                    Icons.store,
-                    (value) => _shopName = value,
-                    validator: _validateShopName,
-                  ),
-                  const SizedBox(height: 20),
-                  _buildFormField(
-                    'Shop Address',
-                    Icons.location_on,
-                    (value) => _shopAddress = value,
-                    maxLines: 2,
-                    validator: _validateAddress,
-                  ),
-                  const SizedBox(height: 20),
-
-                  // Location Picker
-                  ElevatedButton.icon(
-                    onPressed: _isLoading ? null : _getCurrentLocation,
-                    icon: Icon(Icons.map, color: Colors.white),
-                    label:
-                        _latitude == null || _longitude == null
-                            ? Text(
-                              'Pick Shop Location',
-                              style: GoogleFonts.poppins(color: Colors.white),
-                            )
-                            : Text(
-                              'Location Picked! (Lat: ${_latitude!.toStringAsFixed(2)}, Lng: ${_longitude!.toStringAsFixed(2)})',
-                              style: GoogleFonts.poppins(color: Colors.white),
-                            ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.green.shade600,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-
-                  _buildFormField(
-                    'Specialties',
-                    Icons.cut,
-                    (value) => _specialties = value,
-                    hintText: 'e.g., Fades, Beard Trims, Coloring',
-                    validator: _validateSpecialties,
-                  ),
-                  const SizedBox(height: 30),
-
-                  // License Upload
-                  Text(
-                    'Shop License',
-                    style: GoogleFonts.poppins(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  InkWell(
-                    onTap: () => _pickImage(false),
-                    child: Container(
-                      height: 150,
-                      decoration: BoxDecoration(
-                        color: Colors.grey.shade100,
-                        border: Border.all(color: Colors.grey.shade300),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child:
-                          _shopLicenseImage == null
-                              ? Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(
-                                    Icons.upload_file,
-                                    size: 40,
-                                    color: Colors.grey.shade600,
-                                  ),
-                                  const SizedBox(height: 10),
-                                  Text(
-                                    'Upload License Document',
-                                    style: TextStyle(
-                                      color: Colors.grey.shade600,
-                                    ),
-                                  ),
-                                ],
-                              )
-                              : ClipRRect(
-                                borderRadius: BorderRadius.circular(12),
-                                child: Image.file(
-                                  _shopLicenseImage!,
-                                  fit: BoxFit.cover,
-                                ),
-                              ),
-                    ),
-                  ),
                   const SizedBox(height: 30),
 
                   // Register Button
@@ -464,22 +283,6 @@ class _BarberRegistrationPageState extends State<BarberRegistrationPage> {
     if (value == null || value.isEmpty) return 'Please enter phone number';
     if (!RegExp(r'^[0-9]{10,15}$').hasMatch(value))
       return 'Enter valid phone number';
-    return null;
-  }
-
-  String? _validateShopName(String? value) {
-    if (value == null || value.isEmpty) return 'Please enter shop name';
-    return null;
-  }
-
-  String? _validateAddress(String? value) {
-    if (value == null || value.isEmpty) return 'Please enter shop address';
-    if (value.length < 10) return 'Address is too short';
-    return null;
-  }
-
-  String? _validateSpecialties(String? value) {
-    if (value == null || value.isEmpty) return 'Please enter your specialties';
     return null;
   }
 }

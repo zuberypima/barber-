@@ -1,9 +1,8 @@
 import 'package:barber/constants/constants.dart';
 import 'package:barber/services/authentication_services.dart';
 import 'package:barber/services/navigator.dart';
-import 'package:barber/view/BarberRegistrationPage.dart';
+import 'package:barber/view/barber_pages.dart/BarberRegistrationPage.dart';
 import 'package:barber/view/login_page.dart';
-import 'package:barber/widget/customeButton.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -16,7 +15,6 @@ class Registeruser extends StatefulWidget {
 
 class _RegisteruserState extends State<Registeruser> {
   final _formKey = GlobalKey<FormState>();
-  final _fullNameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();

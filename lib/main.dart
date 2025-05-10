@@ -1,10 +1,15 @@
 import 'package:barber/view/BarberDetailsPage.dart';
-import 'package:barber/view/BarberRegistrationPage.dart';
+import 'package:barber/view/barber_pages.dart/BarberRegistrationPage.dart';
 import 'package:barber/view/BookingPage.dart';
 import 'package:barber/view/CreateBookingPage.dart';
 import 'package:barber/view/UserTypeSelectionPage.dart';
-import 'package:barber/view/barberOwnerHomePage.dart';
+import 'package:barber/view/barber_pages.dart/barberOwnerHomePage.dart';
+import 'package:barber/view/barber_pages.dart/RegisterBarberEmail.dart';
 import 'package:barber/view/customer_home.dart';
+import 'package:barber/view/customer_pages/CustomerProfilePage.dart';
+import 'package:barber/view/customer_pages/NearbyBarbersPage.dart';
+import 'package:barber/view/customer_pages/customer_details.dart';
+import 'package:barber/view/customer_pages/customer_main_page.dart';
 import 'package:barber/view/customer_pages/customer_signin.dart';
 import 'package:barber/view/login_page.dart';
 import 'package:barber/view/profile_page.dart';
@@ -37,14 +42,20 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
       ),
-      home: RegisterCustomer(),
-      //  UserTypeSelectionPage(),
-      // BarberRegistrationPage(email: 'master@g.com', password: 'Qq1234'),
-      // BarberDetailsPage(barberEmail: 'zuberypima@gmail.com'),
-      // BarberOwnerHomePage(),
-      // Registeruser(),
-      // BarberBookingPage(),
-      // BarberOwnerHomePage(),
+      home:
+          //  Registerbarberemail(),
+          // NearbyBarbersPage(),
+          //  CustomerMainPage(),
+          //  CustomerProfilePage(),
+          // CustomerDetails(email: 'email', password: 'password'),
+          // RegisterCustomer(),
+          //  UserTypeSelectionPage(),
+          // BarberRegistrationPage(email: 'master@g.com', password: 'Qq1234'),
+          // BarberDetailsPage(barberEmail: 'zuberypima@gmail.com'),
+          // BarberOwnerHomePage(),
+          // Registeruser(),
+          // BarberBookingPage(),
+          BarberOwnerHomePage(),
       // CustomerHomePage(),
       // ProfilePage(isBarber: false),
       // LoginPage(),

@@ -1,3 +1,4 @@
+import 'package:barber/view/customer_pages/customer_signin.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -42,7 +43,13 @@ class UserTypeSelectionPage extends StatelessWidget {
                   ),
                   onPressed: () {
                     // Navigate to barber sign-in page
-                    Navigator.pushNamed(context, '/barber-login');
+                    Navigator.pushAndRemoveUntil(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const RegisterCustomer(),
+                      ),
+                      (route) => false,
+                    );
                   },
                   child: Text(
                     'Barber',
@@ -64,7 +71,13 @@ class UserTypeSelectionPage extends StatelessWidget {
                   ),
                   onPressed: () {
                     // Navigate to customer sign-in page
-                    Navigator.pushNamed(context, '/customer-login');
+                    Navigator.pushAndRemoveUntil(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const RegisterCustomer(),
+                      ),
+                      (route) => false,
+                    );
                   },
                   child: Text(
                     'Customer',
