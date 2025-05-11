@@ -1,6 +1,10 @@
 import 'package:barber/constants/constants.dart';
 import 'package:barber/services/navigator.dart';
 import 'package:barber/view/UserTypeSelectionPage.dart';
+import 'package:barber/view/barber_pages.dart/barberOwnerHomePage.dart';
+import 'package:barber/view/customer_pages/customer_main_page.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -12,16 +16,124 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> {
+  final _auth = FirebaseAuth.instance;
+  final _firestore = FirebaseFirestore.instance;
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  bool _isLoading = false;
+  bool _obscurePassword = true;
+  final _formKey = GlobalKey<FormState>();
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _login() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() => _isLoading = true);
+
+    try {
+      // Sign in with email and password
+      final userCredential = await _auth
+          .signInWithEmailAndPassword(
+            email: _emailController.text.trim(),
+            password: _passwordController.text.trim(),
+          )
+          .timeout(const Duration(seconds: 5));
+
+      final user = userCredential.user;
+      if (user == null) {
+        throw 'Login failed: No user returned';
+      }
+
+      // Check user type
+      final barberDoc = await _firestore
+          .collection('BarbersDetails')
+          .doc(user.email)
+          .get()
+          .timeout(const Duration(seconds: 5));
+
+      final customerDoc = await _firestore
+          .collection('CustomersDetails')
+          .doc(user.email)
+          .get()
+          .timeout(const Duration(seconds: 5));
+
+      if (barberDoc.exists) {
+        // Navigate to barber homepage
+        if (mounted) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => BarberOwnerHomePage()),
+          );
+        }
+      } else if (customerDoc.exists) {
+        // Navigate to customer homepage
+        if (mounted) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => CustomerMainPage()),
+          );
+        }
+      } else {
+        throw 'User type not found. Please register as a barber or customer.';
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Login successful')));
+      }
+    } catch (e) {
+      setState(() => _isLoading = false);
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Login failed: $e')));
+      }
+    }
+  }
+
+  Future<void> _resetPassword() async {
+    if (_emailController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Please enter your email')));
+      return;
+    }
+
+    try {
+      await _auth
+          .sendPasswordResetEmail(email: _emailController.text.trim())
+          .timeout(const Duration(seconds: 5));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Password reset email sent')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error: $e')));
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: Stack(
         children: [
-          // Background image with overlay (same as register page)
+          // Background image with overlay
           Container(
             decoration: BoxDecoration(
               image: DecorationImage(
-                image: AssetImage('assets/backgroun.jpg'),
+                image: const AssetImage('assets/backgroun.jpg'),
                 fit: BoxFit.cover,
                 colorFilter: ColorFilter.mode(
                   Colors.black.withOpacity(0.3),
@@ -50,13 +162,13 @@ class _LoginPageState extends State<LoginPage> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  SizedBox(height: 80),
+                  const SizedBox(height: 80),
 
-                  // App Logo/Title (consistent with register page)
+                  // App Logo/Title
                   Column(
                     children: [
-                      Icon(Icons.cut, size: 50, color: Colors.white),
-                      SizedBox(height: 10),
+                      const Icon(Icons.cut, size: 50, color: Colors.white),
+                      const SizedBox(height: 10),
                       Text(
                         'THE BARBER',
                         style: GoogleFonts.playfairDisplay(
@@ -66,7 +178,7 @@ class _LoginPageState extends State<LoginPage> {
                           letterSpacing: 2,
                         ),
                       ),
-                      SizedBox(height: 5),
+                      const SizedBox(height: 5),
                       Text(
                         'Premium Grooming Experience',
                         style: GoogleFonts.poppins(
@@ -78,7 +190,7 @@ class _LoginPageState extends State<LoginPage> {
                     ],
                   ),
 
-                  SizedBox(height: 10),
+                  const SizedBox(height: 10),
 
                   // Login Card
                   Card(
@@ -89,73 +201,117 @@ class _LoginPageState extends State<LoginPage> {
                     elevation: 10,
                     child: Padding(
                       padding: const EdgeInsets.all(25.0),
-                      child: Column(
-                        children: [
-                          Text(
-                            'Welcome Back',
-                            style: GoogleFonts.poppins(
-                              fontSize: 24,
-                              fontWeight: FontWeight.bold,
-                              color: mainColor,
+                      child: Form(
+                        key: _formKey,
+                        child: Column(
+                          children: [
+                            Text(
+                              'Welcome Back',
+                              style: GoogleFonts.poppins(
+                                fontSize: 24,
+                                fontWeight: FontWeight.bold,
+                                color: mainColor,
+                              ),
                             ),
-                          ),
-                          SizedBox(height: 5),
-                          Text(
-                            'Sign in to continue',
-                            style: GoogleFonts.poppins(color: Colors.grey[600]),
-                          ),
-                          SizedBox(height: 30),
+                            const SizedBox(height: 5),
+                            Text(
+                              'Sign in to continue',
+                              style: GoogleFonts.poppins(
+                                color: Colors.grey[600],
+                              ),
+                            ),
+                            const SizedBox(height: 30),
 
-                          _textFormFieldOne('Email'),
-                          SizedBox(height: 20),
-                          _textFormFieldOne('Password'),
-                          SizedBox(height: 10),
+                            _textFormFieldOne(
+                              'Email',
+                              controller: _emailController,
+                              validator: (value) {
+                                if (value == null || value.isEmpty) {
+                                  return 'Please enter your email';
+                                }
+                                if (!RegExp(
+                                  r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$',
+                                ).hasMatch(value)) {
+                                  return 'Please enter a valid email';
+                                }
+                                return null;
+                              },
+                            ),
+                            const SizedBox(height: 20),
+                            _textFormFieldOne(
+                              'Password',
+                              controller: _passwordController,
+                              obscureText: _obscurePassword,
+                              toggleVisibility: () {
+                                setState(
+                                  () => _obscurePassword = !_obscurePassword,
+                                );
+                              },
+                              validator: (value) {
+                                if (value == null || value.isEmpty) {
+                                  return 'Please enter your password';
+                                }
+                                if (value.length < 6) {
+                                  return 'Password must be at least 6 characters';
+                                }
+                                return null;
+                              },
+                            ),
+                            const SizedBox(height: 10),
 
-                          // Forgot password
-                          Align(
-                            alignment: Alignment.centerRight,
-                            child: TextButton(
-                              onPressed: () {},
-                              child: Text(
-                                'Forgot Password?',
-                                style: GoogleFonts.poppins(
-                                  color: mainColor,
-                                  fontSize: 13,
+                            // Forgot password
+                            Align(
+                              alignment: Alignment.centerRight,
+                              child: TextButton(
+                                onPressed: _resetPassword,
+                                child: Text(
+                                  'Forgot Password?',
+                                  style: GoogleFonts.poppins(
+                                    color: mainColor,
+                                    fontSize: 13,
+                                  ),
                                 ),
                               ),
                             ),
-                          ),
 
-                          SizedBox(height: 20),
+                            const SizedBox(height: 20),
 
-                          // Login Button
-                          Container(
-                            width: double.infinity,
-                            child: ElevatedButton(
-                              onPressed: () {},
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: mainColor,
-                                padding: EdgeInsets.symmetric(vertical: 16),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(10),
+                            // Login Button
+                            Container(
+                              width: double.infinity,
+                              child: ElevatedButton(
+                                onPressed: _isLoading ? null : _login,
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: mainColor,
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 16,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
                                 ),
-                              ),
-                              child: Text(
-                                'LOGIN',
-                                style: GoogleFonts.poppins(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 16,
-                                  color: Colors.white,
-                                ),
+                                child:
+                                    _isLoading
+                                        ? const CircularProgressIndicator(
+                                          color: Colors.white,
+                                        )
+                                        : Text(
+                                          'LOGIN',
+                                          style: GoogleFonts.poppins(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 16,
+                                            color: Colors.white,
+                                          ),
+                                        ),
                               ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
                   ),
 
-                  SizedBox(height: 25),
+                  const SizedBox(height: 25),
 
                   // Don't have account section
                   Row(
@@ -167,7 +323,10 @@ class _LoginPageState extends State<LoginPage> {
                       ),
                       TextButton(
                         onPressed: () {
-                          push_next_page(context, UserTypeSelectionPage());
+                          push_next_page(
+                            context,
+                            const UserTypeSelectionPage(),
+                          );
                         },
                         child: Text(
                           'Register',
@@ -189,7 +348,13 @@ class _LoginPageState extends State<LoginPage> {
   }
 }
 
-Widget _textFormFieldOne(String label) {
+Widget _textFormFieldOne(
+  String label, {
+  required TextEditingController controller,
+  bool obscureText = false,
+  VoidCallback? toggleVisibility,
+  String? Function(String?)? validator,
+}) {
   return Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
@@ -201,12 +366,12 @@ Widget _textFormFieldOne(String label) {
           fontSize: 14,
         ),
       ),
-      SizedBox(height: 8),
+      const SizedBox(height: 8),
       Container(
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(10),
-          boxShadow: [
+          boxShadow: const [
             BoxShadow(
               color: Colors.black12,
               blurRadius: 6,
@@ -215,14 +380,25 @@ Widget _textFormFieldOne(String label) {
           ],
         ),
         child: TextFormField(
-          obscureText: label == 'Password',
+          controller: controller,
+          obscureText: obscureText,
+          validator: validator,
           decoration: InputDecoration(
-            contentPadding: EdgeInsets.symmetric(horizontal: 15, vertical: 15),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 15,
+              vertical: 15,
+            ),
             border: InputBorder.none,
             filled: false,
             suffixIcon:
                 label == 'Password'
-                    ? Icon(Icons.visibility_off, color: Colors.grey)
+                    ? IconButton(
+                      icon: Icon(
+                        obscureText ? Icons.visibility_off : Icons.visibility,
+                        color: Colors.grey,
+                      ),
+                      onPressed: toggleVisibility,
+                    )
                     : null,
           ),
         ),

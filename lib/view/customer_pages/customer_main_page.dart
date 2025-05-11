@@ -1,4 +1,7 @@
-import 'package:barber/view/customer_home.dart';
+import 'package:barber/view/CreateBookingPage11.dart';
+import 'package:barber/view/customer_pages/BookingsPage.dart';
+import 'package:barber/view/customer_pages/CreateBookingPage.dart';
+import 'package:barber/view/customer_pages/CustomerHomePage.dart';
 import 'package:barber/view/customer_pages/CustomerProfilePage.dart';
 import 'package:flutter/material.dart';
 
@@ -10,8 +13,13 @@ class CustomerMainPage extends StatefulWidget {
 }
 
 class _CustomerMainPageState extends State<CustomerMainPage> {
-  int _selectedScreen = 0;
-  List<Widget> _screenList = [CustomerHomePage(), CustomerProfilePage()];
+  int _selectedScreen = 1;
+  List<Widget> _screenList = [
+    // CreateBookingPage(),
+    BookingsPage(),
+    CustomerHomePage(),
+    CustomerProfilePage(),
+  ];
   @override
   Widget build(BuildContext context) {
     return Scaffold(

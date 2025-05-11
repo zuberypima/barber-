@@ -1,5 +1,7 @@
 import 'package:barber/services/navigator.dart';
 import 'package:barber/view/barber_pages.dart/ManageServicesPage.dart';
+import 'package:barber/view/barber_pages.dart/QueueManagerPage.dart';
+import 'package:barber/view/barber_pages.dart/ViewDailyStatsPage.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -217,6 +219,7 @@ class BarberOwnerHomePage extends StatelessWidget {
                     children: [
                       _buildQuickAction('Manage Queue', Icons.queue, () {
                         // Navigate to queue management
+                        push_next_page(context, QueueManagerPage());
                       }),
                       _buildQuickAction('Manage Service', Icons.add_circle, () {
                         // Navigate to service management
@@ -230,8 +233,7 @@ class BarberOwnerHomePage extends StatelessWidget {
                         },
                       ),
                       _buildQuickAction('Daily Stats', Icons.bar_chart, () {
-                        // Navigate to BarberStatsPage
-                        Navigator.pushNamed(context, '/barber-stats');
+                        push_next_page(context, ViewDailyStatsPage());
                       }),
                     ],
                   ),
