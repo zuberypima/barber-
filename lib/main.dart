@@ -3,6 +3,9 @@ import 'package:barber/view/barber_pages.dart/BarberRegistrationPage.dart';
 import 'package:barber/view/BookingPage.dart';
 import 'package:barber/view/CreateBookingPage.dart';
 import 'package:barber/view/UserTypeSelectionPage.dart';
+import 'package:barber/view/barber_pages.dart/BarberShopsPage.dart';
+import 'package:barber/view/barber_pages.dart/BarberStatsPage.dart';
+import 'package:barber/view/barber_pages.dart/ManageServicesPage.dart';
 import 'package:barber/view/barber_pages.dart/barberOwnerHomePage.dart';
 import 'package:barber/view/barber_pages.dart/RegisterBarberEmail.dart';
 import 'package:barber/view/customer_home.dart';
@@ -43,6 +46,10 @@ class MyApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
       ),
       home:
+          //  ManageServicesPage(),
+          //  BarberStatsPage(),
+          //  BarberShopsPage(),
+          // CreateBookingPage(selectedBarber: selectedBarber)
           //  Registerbarberemail(),
           // NearbyBarbersPage(),
           //  CustomerMainPage(),
@@ -50,12 +57,12 @@ class MyApp extends StatelessWidget {
           // CustomerDetails(email: 'email', password: 'password'),
           // RegisterCustomer(),
           //  UserTypeSelectionPage(),
-          // BarberRegistrationPage(email: 'master@g.com', password: 'Qq1234'),
-          // BarberDetailsPage(barberEmail: 'zuberypima@gmail.com'),
-          // BarberOwnerHomePage(),
-          // Registeruser(),
-          // BarberBookingPage(),
+          // BarberRegistrationPage(email: 'kayoko11@g.com', password: 'Qq1234'),
+          // BarberDetailsPage(barberEmail: 'bosspima@gmail.com'),
           BarberOwnerHomePage(),
+      // Registeruser(),
+      // BarberBookingPage(),
+      // BarberOwnerHomePage(),
       // CustomerHomePage(),
       // ProfilePage(isBarber: false),
       // LoginPage(),

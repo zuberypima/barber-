@@ -6,7 +6,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
-import 'package:geolocator/geolocator.dart'; // Import geolocator plugin
+import 'package:geolocator/geolocator.dart';
+import 'package:intl/intl.dart';
 
 class BarberRegistrationPage extends StatefulWidget {
   final String email;
@@ -33,13 +34,15 @@ class _BarberRegistrationPageState extends State<BarberRegistrationPage> {
   String _phoneNumber = '';
   String _shopName = '';
   String _shopAddress = '';
-  double? _latitude; // To store latitude
-  double? _longitude; // To store longitude
-  String _specialties = '';
+  double? _latitude;
+  double? _longitude;
   File? _profileImage;
   File? _shopLicenseImage;
   bool _isLoading = false;
-  bool _obscurePassword = true;
+  String? _serviceStandard;
+  final List<Map<String, dynamic>> _services = [];
+  final _serviceController = TextEditingController();
+  final _priceRangeController = TextEditingController();
 
   Future<void> _pickImage(bool isProfile) async {
     final picker = ImagePicker();
@@ -61,7 +64,6 @@ class _BarberRegistrationPageState extends State<BarberRegistrationPage> {
     bool serviceEnabled;
     LocationPermission permission;
 
-    // Test if location services are enabled.
     serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -113,6 +115,21 @@ class _BarberRegistrationPageState extends State<BarberRegistrationPage> {
     }
   }
 
+  void _addService() {
+    if (_serviceController.text.isNotEmpty &&
+        _priceRangeController.text.isNotEmpty) {
+      setState(() {
+        _services.add({
+          'name': _serviceController.text,
+          'priceRange': _priceRangeController.text,
+          'dailyEarnings': 0.0, // Initialize daily earnings for tracking
+        });
+        _serviceController.clear();
+        _priceRangeController.clear();
+      });
+    }
+  }
+
   Future<void> _registerBarber() async {
     if (!_formKey.currentState!.validate()) return;
     if (_profileImage == null || _shopLicenseImage == null) {
@@ -123,7 +140,6 @@ class _BarberRegistrationPageState extends State<BarberRegistrationPage> {
       );
       return;
     }
-
     if (_latitude == null || _longitude == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -132,12 +148,24 @@ class _BarberRegistrationPageState extends State<BarberRegistrationPage> {
       );
       return;
     }
+    if (_serviceStandard == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please select a service standard')),
+      );
+      return;
+    }
+    if (_services.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please add at least one service')),
+      );
+      return;
+    }
 
     setState(() => _isLoading = true);
 
     try {
       // 1. Create user in Firebase Auth
-      final userCredential = await _auth.createUserWithEmailAndPassword(
+      await _auth.createUserWithEmailAndPassword(
         email: widget.email,
         password: widget.password,
       );
@@ -145,48 +173,67 @@ class _BarberRegistrationPageState extends State<BarberRegistrationPage> {
       // 2. Upload images to Firebase Storage
       final profileUrl = await _uploadImage(
         _profileImage!,
-        'profile_${widget.email.toString()}',
+        'profile_${widget.email}',
       );
       final licenseUrl = await _uploadImage(
         _shopLicenseImage!,
-        'license_${widget.email.toString()}',
+        'license_${widget.email}',
       );
 
       // 3. Create barber document in Firestore
-      await _firestore
+      final barberDoc = _firestore
           .collection('BarbersDetails')
-          .doc(widget.email.toString())
-          .set({
-            'email': widget.email,
-            'fullName': _fullName,
-            'phoneNumber': _phoneNumber,
-            'shopName': _shopName,
-            'shopAddress': _shopAddress,
-            'latitude': _latitude, // Save latitude
-            'longitude': _longitude, // Save longitude
-            'specialties': _specialties,
-            'profileImageUrl': profileUrl,
-            'licenseImageUrl': licenseUrl,
-            'isVerified': false,
-            'createdAt': FieldValue.serverTimestamp(),
-            'rating': 0,
-            'totalRatings': 0,
-            'services': [],
-            'workingHours': {
-              'Monday': {'open': '09:00', 'close': '18:00'},
-              'Tuesday': {'open': '09:00', 'close': '18:00'},
-              'Wednesday': {'open': '09:00', 'close': '18:00'},
-              'Thursday': {'open': '09:00', 'close': '18:00'},
-              'Friday': {'open': '09:00', 'close': '18:00'},
-              'Saturday': {'open': '10:00', 'close': '16:00'},
-              'Sunday': {'open': '10:00', 'close': '14:00'},
-            },
-          });
+          .doc(widget.email);
+      await barberDoc.set({
+        'email': widget.email,
+        'fullName': _fullName,
+        'phoneNumber': _phoneNumber,
+        'shopName': _shopName,
+        'shopAddress': _shopAddress,
+        'latitude': _latitude,
+        'longitude': _longitude,
+        'profileImageUrl': profileUrl,
+        'licenseImageUrl': licenseUrl,
+        'isVerified': false,
+        'createdAt': FieldValue.serverTimestamp(),
+        'rating': 0.0,
+        'totalRatings': 0,
+        'serviceStandard': _serviceStandard,
+        'services': _services,
+        'workingHours': {
+          'Monday': {'open': '09:00', 'close': '18:00'},
+          'Tuesday': {'open': '09:00', 'close': '18:00'},
+          'Wednesday': {'open': '09:00', 'close': '18:00'},
+          'Thursday': {'open': '09:00', 'close': '18:00'},
+          'Friday': {'open': '09:00', 'close': '18:00'},
+          'Saturday': {'open': '10:00', 'close': '16:00'},
+          'Sunday': {'open': '10:00', 'close': '14:00'},
+        },
+      });
 
-      // 4. Navigate to dashboard or verification pending screen
-      // Navigator.pushReplacementNamed(context, '/barber-dashboard');
+      // 4. Initialize DailyStats for the current day
+      final currentDate = DateFormat('yyyy-MM-dd').format(DateTime.now());
+      await barberDoc.collection('DailyStats').doc(currentDate).set({
+        'date': currentDate,
+        'dailyEarnings': 0.0,
+        'dailyCustomers': 0,
+        'dailyQueue': 0,
+        'dailyBookings': 0,
+        'timestamp': FieldValue.serverTimestamp(),
+        'serviceEarnings': {
+          for (var service in _services) service['name']: 0.0,
+        },
+      });
+
+      // 5. Initialize TotalStats
+      await barberDoc.collection('TotalStats').doc('aggregate').set({
+        'totalCustomers': 0,
+        'lastUpdated': FieldValue.serverTimestamp(),
+      });
+
+      // 6. Navigate to BarberOwnerHomePage
       Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (context) => BarberOwnerHomePage()),
+        MaterialPageRoute(builder: (context) => const BarberOwnerHomePage()),
         (route) => false,
       );
     } on FirebaseAuthException catch (e) {
@@ -214,11 +261,14 @@ class _BarberRegistrationPageState extends State<BarberRegistrationPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Complete Barber Profile', style: GoogleFonts.poppins()),
+        title: Text(
+          'Complete Barber Profile',
+          style: GoogleFonts.poppins(color: Colors.white),
+        ),
+        backgroundColor: Colors.blue.shade800,
       ),
       body: Stack(
         children: [
-          // Background gradient
           Container(
             decoration: BoxDecoration(
               gradient: LinearGradient(
@@ -228,7 +278,6 @@ class _BarberRegistrationPageState extends State<BarberRegistrationPage> {
               ),
             ),
           ),
-
           SingleChildScrollView(
             padding: const EdgeInsets.all(20),
             child: Form(
@@ -236,7 +285,6 @@ class _BarberRegistrationPageState extends State<BarberRegistrationPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Profile Image
                   Center(
                     child: Stack(
                       children: [
@@ -277,8 +325,6 @@ class _BarberRegistrationPageState extends State<BarberRegistrationPage> {
                     ),
                   ),
                   const SizedBox(height: 30),
-
-                  // Form Fields
                   _buildFormField(
                     'Full Name',
                     Icons.person,
@@ -309,8 +355,103 @@ class _BarberRegistrationPageState extends State<BarberRegistrationPage> {
                     validator: _validateAddress,
                   ),
                   const SizedBox(height: 20),
-
-                  // Location Picker
+                  DropdownButtonFormField<String>(
+                    decoration: InputDecoration(
+                      labelText: 'Service Standard',
+                      prefixIcon: Icon(Icons.star, color: Colors.blue.shade800),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: Colors.grey.shade400),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: Colors.grey.shade400),
+                      ),
+                      filled: true,
+                      fillColor: Colors.white,
+                    ),
+                    items:
+                        ['Premium', 'Traditional', 'Modern']
+                            .map(
+                              (standard) => DropdownMenuItem(
+                                value: standard,
+                                child: Text(standard),
+                              ),
+                            )
+                            .toList(),
+                    onChanged: (value) {
+                      setState(() {
+                        _serviceStandard = value;
+                      });
+                    },
+                    validator:
+                        (value) =>
+                            value == null
+                                ? 'Please select a service standard'
+                                : null,
+                  ),
+                  const SizedBox(height: 20),
+                  Text(
+                    'Services & Price Ranges',
+                    style: GoogleFonts.poppins(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  _buildFormField(
+                    'Service Name',
+                    Icons.cut,
+                    (value) {},
+                    controller: _serviceController,
+                  ),
+                  const SizedBox(height: 10),
+                  _buildFormField(
+                    'Price Range (e.g., \$20-\$30)',
+                    Icons.attach_money,
+                    (value) {},
+                    controller: _priceRangeController,
+                  ),
+                  const SizedBox(height: 10),
+                  ElevatedButton(
+                    onPressed: _addService,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.blue.shade600,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: Text(
+                      'Add Service',
+                      style: GoogleFonts.poppins(color: Colors.white),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  _services.isNotEmpty
+                      ? ListView.builder(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        itemCount: _services.length,
+                        itemBuilder: (context, index) {
+                          return ListTile(
+                            title: Text(_services[index]['name']),
+                            subtitle: Text(
+                              'Price: ${_services[index]['priceRange']}',
+                            ),
+                            trailing: IconButton(
+                              icon: const Icon(Icons.delete, color: Colors.red),
+                              onPressed: () {
+                                setState(() {
+                                  _services.removeAt(index);
+                                });
+                              },
+                            ),
+                          );
+                        },
+                      )
+                      : const Text('No services added yet'),
+                  const SizedBox(height: 20),
                   ElevatedButton.icon(
                     onPressed: _isLoading ? null : _getCurrentLocation,
                     icon: Icon(Icons.map, color: Colors.white),
@@ -333,17 +474,6 @@ class _BarberRegistrationPageState extends State<BarberRegistrationPage> {
                     ),
                   ),
                   const SizedBox(height: 20),
-
-                  _buildFormField(
-                    'Specialties',
-                    Icons.cut,
-                    (value) => _specialties = value,
-                    hintText: 'e.g., Fades, Beard Trims, Coloring',
-                    validator: _validateSpecialties,
-                  ),
-                  const SizedBox(height: 30),
-
-                  // License Upload
                   Text(
                     'Shop License',
                     style: GoogleFonts.poppins(
@@ -390,8 +520,6 @@ class _BarberRegistrationPageState extends State<BarberRegistrationPage> {
                     ),
                   ),
                   const SizedBox(height: 30),
-
-                  // Register Button
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
@@ -435,8 +563,10 @@ class _BarberRegistrationPageState extends State<BarberRegistrationPage> {
     int maxLines = 1,
     String? hintText,
     String? Function(String?)? validator,
+    TextEditingController? controller,
   }) {
     return TextFormField(
+      controller: controller,
       decoration: InputDecoration(
         labelText: label,
         hintText: hintText,
@@ -480,11 +610,6 @@ class _BarberRegistrationPageState extends State<BarberRegistrationPage> {
   String? _validateAddress(String? value) {
     if (value == null || value.isEmpty) return 'Please enter shop address';
     if (value.length < 10) return 'Address is too short';
-    return null;
-  }
-
-  String? _validateSpecialties(String? value) {
-    if (value == null || value.isEmpty) return 'Please enter your specialties';
     return null;
   }
 }

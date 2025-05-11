@@ -1,3 +1,4 @@
+import 'package:barber/constants/constants.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -31,7 +32,10 @@ class _BarberDetailsPageState extends State<BarberDetailsPage> {
   Future<void> _fetchBarberDetails() async {
     try {
       final doc =
-          await _firestore.collection('barbers').doc(widget.barberEmail).get();
+          await _firestore
+              .collection('BarbersDetails')
+              .doc(widget.barberEmail)
+              .get();
 
       if (doc.exists) {
         final data = doc.data()!;
@@ -50,7 +54,7 @@ class _BarberDetailsPageState extends State<BarberDetailsPage> {
 
         setState(() {
           _barber = Barber(
-            id: doc.id,
+            // id: doc.id,
             email: data['email'] ?? '',
             fullName: data['fullName'] ?? '',
             shopName: data['shopName'] ?? '',
@@ -96,8 +100,8 @@ class _BarberDetailsPageState extends State<BarberDetailsPage> {
 
     if (_barber == null) {
       return Scaffold(
-        appBar: AppBar(),
-        body: const Center(child: Text('Barber information not available')),
+        appBar: AppBar(backgroundColor: mainColor),
+        body: Center(child: Text('Barber information not available')),
       );
     }
 
@@ -105,7 +109,7 @@ class _BarberDetailsPageState extends State<BarberDetailsPage> {
       body: CustomScrollView(
         slivers: [
           SliverAppBar(
-            expandedHeight: 300,
+            expandedHeight: 200,
             flexibleSpace: FlexibleSpaceBar(
               background: CachedNetworkImage(
                 imageUrl: _barber!.profileImageUrl,
@@ -485,7 +489,6 @@ class _BarberDetailsPageState extends State<BarberDetailsPage> {
 
 // Data Models
 class Barber {
-  final String id;
   final String email;
   final String fullName;
   final String shopName;
@@ -498,7 +501,6 @@ class Barber {
   final List<Service> services;
 
   Barber({
-    required this.id,
     required this.email,
     required this.fullName,
     required this.shopName,

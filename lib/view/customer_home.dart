@@ -1,5 +1,9 @@
+import 'package:barber/services/navigator.dart';
+import 'package:barber/view/barber_pages.dart/BarberShopsPage.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:shimmer/shimmer.dart';
 
 class CustomerHomePage extends StatelessWidget {
   const CustomerHomePage({super.key});
@@ -82,19 +86,50 @@ class CustomerHomePage extends StatelessWidget {
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                      TextButton(child: Text('See all'), onPressed: () {}),
+                      TextButton(
+                        child: Text('See all'),
+                        onPressed: () {
+                          push_next_page(context, BarberShopsPage());
+                        },
+                      ),
                     ],
                   ),
                   SizedBox(height: 10),
-                  SizedBox(
-                    height: 180,
-                    child: ListView.builder(
-                      scrollDirection: Axis.horizontal,
-                      itemCount: 5,
-                      itemBuilder: (context, index) {
-                        return _buildFeaturedBarberCard();
-                      },
-                    ),
+                  StreamBuilder<QuerySnapshot>(
+                    stream:
+                        FirebaseFirestore.instance
+                            .collection('BarbersDetails')
+                            .snapshots(),
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return SizedBox(
+                          height: 180,
+                          child: ListView.builder(
+                            scrollDirection: Axis.horizontal,
+                            itemCount: 3, // Show 3 skeleton cards
+                            itemBuilder: (context, index) {
+                              return _buildFeaturedBarberSkeleton();
+                            },
+                          ),
+                        );
+                      }
+                      if (snapshot.hasError) {
+                        return Text('Error: ${snapshot.error}');
+                      }
+                      return SizedBox(
+                        height: 180,
+                        child: ListView.builder(
+                          scrollDirection: Axis.horizontal,
+                          itemCount: snapshot.data!.docs.length,
+                          itemBuilder: (context, index) {
+                            final data =
+                                snapshot.data!.docs[index].data()
+                                    as Map<String, dynamic>;
+                            return _buildFeaturedBarberCard(data);
+                          },
+                        ),
+                      );
+                    },
                   ),
                 ],
               ),
@@ -145,16 +180,46 @@ class CustomerHomePage extends StatelessWidget {
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                      TextButton(child: Text('See all'), onPressed: () {}),
+                      TextButton(
+                        child: Text('See all'),
+                        onPressed: () {
+                          push_next_page(context, BarberShopsPage());
+                        },
+                      ),
                     ],
                   ),
                   SizedBox(height: 10),
-                  ListView.builder(
-                    shrinkWrap: true,
-                    physics: NeverScrollableScrollPhysics(),
-                    itemCount: 3,
-                    itemBuilder: (context, index) {
-                      return _buildBarberShopCard(withQueueStatus: true);
+                  StreamBuilder<QuerySnapshot>(
+                    stream:
+                        FirebaseFirestore.instance
+                            .collection('barber')
+                            .snapshots(),
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return Column(
+                          children: List.generate(
+                            3,
+                            (index) => _buildBarberShopSkeleton(),
+                          ),
+                        );
+                      }
+                      if (snapshot.hasError) {
+                        return Text('Error: ${snapshot.error}');
+                      }
+                      return ListView.builder(
+                        shrinkWrap: true,
+                        physics: NeverScrollableScrollPhysics(),
+                        itemCount: snapshot.data!.docs.length,
+                        itemBuilder: (context, index) {
+                          final data =
+                              snapshot.data!.docs[index].data()
+                                  as Map<String, dynamic>;
+                          return _buildBarberShopCard(
+                            barberShopData: data,
+                            withQueueStatus: true,
+                          );
+                        },
+                      );
                     },
                   ),
                 ],
@@ -228,7 +293,12 @@ class CustomerHomePage extends StatelessWidget {
     );
   }
 
-  Widget _buildFeaturedBarberCard() {
+  Widget _buildFeaturedBarberCard(Map<String, dynamic> data) {
+    final name = data['shopName'] as String? ?? 'No Name';
+    final rating = (data['rating'] as num?)?.toDouble() ?? 0.0;
+    final reviewCount = data['reviewCount'] as int? ?? 0;
+    final imageUrl = data['imageUrl'] as String? ?? 'assets/background.jpg';
+
     return Container(
       width: 150,
       margin: EdgeInsets.only(right: 10),
@@ -236,19 +306,26 @@ class CustomerHomePage extends StatelessWidget {
         child: InkWell(
           borderRadius: BorderRadius.circular(10),
           onTap: () {
-            // Navigate to barber profile
+            debugPrint('Tapped on $name');
           },
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               ClipRRect(
                 borderRadius: BorderRadius.vertical(top: Radius.circular(10)),
-                child: Image.asset(
-                  // 'assets/images/barbershop_sample.jpg',
-                  'assets/backgroun.jpg',
+                child: Image.network(
+                  imageUrl,
                   height: 100,
                   width: double.infinity,
                   fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) {
+                    return Image.asset(
+                      'assets/background.jpg',
+                      height: 100,
+                      width: double.infinity,
+                      fit: BoxFit.cover,
+                    );
+                  },
                 ),
               ),
               Padding(
@@ -257,21 +334,64 @@ class CustomerHomePage extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Elite Barbers',
+                      name,
                       style: GoogleFonts.poppins(fontWeight: FontWeight.bold),
                     ),
                     SizedBox(height: 5),
                     Row(
                       children: [
                         Icon(Icons.star, color: Colors.amber, size: 16),
-                        Text('4.8', style: GoogleFonts.poppins(fontSize: 12)),
                         Text(
-                          ' (124)',
+                          rating.toStringAsFixed(1),
+                          style: GoogleFonts.poppins(fontSize: 12),
+                        ),
+                        Text(
+                          ' ($reviewCount)',
                           style: GoogleFonts.poppins(
                             fontSize: 12,
                             color: Colors.grey,
                           ),
                         ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFeaturedBarberSkeleton() {
+    return Shimmer.fromColors(
+      baseColor: Colors.grey[300]!,
+      highlightColor: Colors.grey[100]!,
+      child: Container(
+        width: 150,
+        margin: EdgeInsets.only(right: 10),
+        child: Card(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                height: 100,
+                width: double.infinity,
+                color: Colors.white,
+              ),
+              Padding(
+                padding: EdgeInsets.all(8),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(width: 100, height: 16, color: Colors.white),
+                    SizedBox(height: 5),
+                    Row(
+                      children: [
+                        Container(width: 16, height: 16, color: Colors.white),
+                        SizedBox(width: 5),
+                        Container(width: 40, height: 12, color: Colors.white),
                       ],
                     ),
                   ],
@@ -298,42 +418,68 @@ class CustomerHomePage extends StatelessWidget {
     );
   }
 
-  Widget _buildBarberShopCard({bool withQueueStatus = false}) {
+  Widget _buildBarberShopCard({
+    required Map<String, dynamic> barberShopData,
+    bool withQueueStatus = false,
+  }) {
+    final name = barberShopData['shopName'] as String? ?? 'No Name';
+    final rating = (barberShopData['rating'] as num?)?.toDouble() ?? 0.0;
+    final reviewCount = barberShopData['reviewCount'] as int? ?? 0;
+    final imageUrl =
+        barberShopData['imageUrl'] as String? ?? 'assets/background.jpg';
+    final distance = (barberShopData['distance'] as num?)?.toDouble() ?? 0.0;
+    final queueLength = barberShopData['queueLength'] as int?;
+    final estimatedWaitTime = barberShopData['estimatedWaitTime'] as String?;
+
     return Card(
-      margin: EdgeInsets.only(bottom: 10),
+      margin: const EdgeInsets.only(bottom: 10),
       child: InkWell(
         onTap: () {
-          // Navigate to barber profile
+          debugPrint('Tapped on $name');
         },
         child: Padding(
-          padding: EdgeInsets.all(10),
+          padding: const EdgeInsets.all(10),
           child: Row(
             children: [
               ClipRRect(
                 borderRadius: BorderRadius.circular(8),
-                child: Image.asset(
-                  'assets/backgroun.jpg',
+                child: Image.network(
+                  imageUrl,
                   width: 70,
                   height: 70,
                   fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) {
+                    return Image.asset(
+                      'assets/background.jpg',
+                      width: 70,
+                      height: 70,
+                      fit: BoxFit.cover,
+                    );
+                  },
                 ),
               ),
-              SizedBox(width: 10),
+              const SizedBox(width: 10),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Precision Cuts',
-                      style: GoogleFonts.poppins(fontWeight: FontWeight.bold),
+                      name,
+                      style: GoogleFonts.poppins(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
                     ),
-                    SizedBox(height: 5),
+                    const SizedBox(height: 5),
                     Row(
                       children: [
-                        Icon(Icons.star, color: Colors.amber, size: 16),
-                        Text('4.9', style: GoogleFonts.poppins(fontSize: 12)),
+                        const Icon(Icons.star, color: Colors.amber, size: 16),
                         Text(
-                          ' (256)',
+                          rating.toStringAsFixed(1),
+                          style: GoogleFonts.poppins(fontSize: 12),
+                        ),
+                        Text(
+                          ' ($reviewCount)',
                           style: GoogleFonts.poppins(
                             fontSize: 12,
                             color: Colors.grey,
@@ -341,12 +487,16 @@ class CustomerHomePage extends StatelessWidget {
                         ),
                       ],
                     ),
-                    SizedBox(height: 5),
+                    const SizedBox(height: 5),
                     Row(
                       children: [
-                        Icon(Icons.location_on, size: 16, color: Colors.grey),
+                        const Icon(
+                          Icons.location_on,
+                          size: 16,
+                          color: Colors.grey,
+                        ),
                         Text(
-                          '1.2 km away',
+                          '${distance.toStringAsFixed(1)} km away',
                           style: GoogleFonts.poppins(
                             fontSize: 12,
                             color: Colors.grey,
@@ -354,13 +504,19 @@ class CustomerHomePage extends StatelessWidget {
                         ),
                       ],
                     ),
-                    if (withQueueStatus) ...[
-                      SizedBox(height: 5),
+                    if (withQueueStatus &&
+                        queueLength != null &&
+                        estimatedWaitTime != null) ...[
+                      const SizedBox(height: 5),
                       Row(
                         children: [
-                          Icon(Icons.people, size: 16, color: Colors.grey),
+                          const Icon(
+                            Icons.people,
+                            size: 16,
+                            color: Colors.grey,
+                          ),
                           Text(
-                            ' Queue: 2 people (15 min wait)',
+                            'Queue: $queueLength people ($estimatedWaitTime)',
                             style: GoogleFonts.poppins(
                               fontSize: 12,
                               color: Colors.grey,
@@ -372,7 +528,56 @@ class CustomerHomePage extends StatelessWidget {
                   ],
                 ),
               ),
-              IconButton(icon: Icon(Icons.favorite_border), onPressed: () {}),
+              IconButton(
+                icon: const Icon(Icons.favorite_border),
+                onPressed: () {
+                  // Implement favorite functionality
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBarberShopSkeleton() {
+    return Shimmer.fromColors(
+      baseColor: Colors.grey[300]!,
+      highlightColor: Colors.grey[100]!,
+      child: Card(
+        margin: const EdgeInsets.only(bottom: 10),
+        child: Padding(
+          padding: const EdgeInsets.all(10),
+          child: Row(
+            children: [
+              Container(width: 70, height: 70, color: Colors.white),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(width: 150, height: 16, color: Colors.white),
+                    const SizedBox(height: 5),
+                    Row(
+                      children: [
+                        Container(width: 16, height: 16, color: Colors.white),
+                        const SizedBox(width: 5),
+                        Container(width: 60, height: 12, color: Colors.white),
+                      ],
+                    ),
+                    const SizedBox(height: 5),
+                    Row(
+                      children: [
+                        Container(width: 16, height: 16, color: Colors.white),
+                        const SizedBox(width: 5),
+                        Container(width: 80, height: 12, color: Colors.white),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              Container(width: 40, height: 40, color: Colors.white),
             ],
           ),
         ),
